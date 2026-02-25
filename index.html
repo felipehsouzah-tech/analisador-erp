@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analisador de Embarques .txt (Datasul)</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Importando SheetJS via CDN para exportação XLSX e CSV -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>Analisador de Embarques .txt (Datasul)</h1>
+            <p>Importação e análise de relatórios de preparação de pedidos.</p>
+        </header>
+
+        <main>
+            <!-- Área de Upload (Drag and Drop) -->
+            <div class="upload-section" id="drop-area">
+                <div class="upload-content">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <p>Arraste e solte seu arquivo .txt do relatório aqui</p>
+                    <span>ou</span>
+                    <button type="button" class="btn" onclick="document.getElementById('file-input').click()">Selecionar
+                        Arquivo</button>
+                    <input type="file" id="file-input" accept=".txt" hidden>
+                </div>
+                <div class="status-message" id="status-message"></div>
+            </div>
+
+            <!-- Área de Resultados e Exportação -->
+            <div class="results-section hidden" id="results-section">
+                <div class="results-header">
+                    <div class="header-info">
+                        <h2>Itens Extraídos</h2>
+                    </div>
+
+                    <div class="filters">
+                        <select id="embarque-filter" class="input-select">
+                            <option value="all">Todos os Embarques</option>
+                        </select>
+                    </div>
+
+                    <div class="actions">
+                        <button type="button" class="btn" id="export-csv">Exportar CSV</button>
+                        <button type="button" class="btn" id="export-xlsx">Exportar XLSX</button>
+                        <button type="button" class="btn" id="print-report" style="background-color: #4b5563;">Imprimir
+                            Relatório</button>
+                    </div>
+                </div>
+
+                <div id="stats"></div>
+
+                <div class="alert hidden" id="alert-message"></div>
+
+                <div class="table-container">
+                    <table id="data-table">
+                        <thead id="table-head"></thead>
+                        <tbody id="table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Área Oculta para Impressão -->
+    <div id="print-area" class="print-only"></div>
+
+    <!-- Modal para Log de Erros -->
+    <div id="error-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Detalhes dos Erros de Linha</h3>
+                <button type="button" class="close-btn" id="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>As linhas abaixo foram identificadas como prováveis itens, mas não puderam ser lidas corretamente
+                    (falta de colunas ou formato imprevisto):</p>
+                <div id="error-log-container" class="error-log"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn" id="modal-close-btn">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
