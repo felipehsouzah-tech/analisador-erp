@@ -1,69 +1,88 @@
 #!/usr/bin/env bash
-# EXECUTE ESTE SCRIPT NO SEU MAC / HACKINTOSH (nao no container).
-# Faz um inventario SOMENTE-LEITURA da pilha grafica AMD do macOS instalado.
-# Nao copia binarios da Apple e nao modifica nada: gera um relatorio de texto
-# que e o insumo para a fase 2 da analise.
+# Inventario SOMENTE-LEITURA da pilha grafica AMD do macOS.
+# Nao copia binarios da Apple e nao modifica nada: gera um relatorio de texto.
 #
-#   ./dump_macos_amd_stack.sh > relatorio-$(sw_vers -productVersion).txt
+# Modo 1 — macOS ja bootado (precisa de video funcionando):
+#     ./dump_macos_amd_stack.sh > relatorio.txt
+#
+# Modo 2 — Terminal do Recovery, ou volume do sistema montado a partir de
+# outro macOS. NAO precisa de GPU acelerada, entao serve quando a placa
+# instalada nao tem driver. Descubra o ponto de montagem com `diskutil list`:
+#     ./dump_macos_amd_stack.sh --root /Volumes/Macintosh\ HD > relatorio.txt
 set -uo pipefail
 
-E=/System/Library/Extensions
+ROOT=""
+case "${1:-}" in
+  --root) ROOT="${2:?uso: --root /caminho/do/volume}" ;;
+  -h|--help) sed -n '2,14p' "$0"; exit 0 ;;
+esac
 
-echo "=== macOS ==="
-sw_vers
-uname -a
+E="$ROOT/System/Library/Extensions"
+LIVE=0
+[ -z "$ROOT" ] && LIVE=1
+
+if [ ! -d "$E" ]; then
+  echo "ERRO: nao achei $E" >&2
+  echo "Se estiver no Recovery, monte o volume do sistema e use --root." >&2
+  exit 1
+fi
+
+plistget() { /usr/libexec/PlistBuddy -c "Print :$2" "$1" 2>/dev/null; }
+
+echo "=== Contexto ==="
+if [ "$LIVE" = 1 ]; then sw_vers; uname -a; else echo "modo offline, root=$ROOT"; fi
+# versao do sistema alvo, funciona nos dois modos
+plistget "$ROOT/System/Library/CoreServices/SystemVersion.plist" ProductVersion
+plistget "$ROOT/System/Library/CoreServices/SystemVersion.plist" ProductBuildVersion
 echo
 
 echo "=== Kexts AMD presentes ==="
-ls -1d "$E"/AMD*.kext 2>/dev/null || echo "(nenhum em $E)"
+ls -1d "$E"/AMD*.kext 2>/dev/null || echo "(nenhum)"
 echo
 
-echo "=== Bundle IDs, versoes e IOPCIMatch (device IDs suportados) ==="
+echo "=== Bundle IDs, versoes e device IDs declarados ==="
 for k in "$E"/AMD*.kext; do
   [ -d "$k" ] || continue
-  plist="$k/Contents/Info.plist"
-  [ -f "$plist" ] || continue
+  p="$k/Contents/Info.plist"; [ -f "$p" ] || continue
   echo "--- $(basename "$k")"
-  /usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$plist" 2>/dev/null
-  /usr/libexec/PlistBuddy -c "Print :CFBundleVersion"    "$plist" 2>/dev/null
-  # Device IDs declarados pelo kext (0x1002 = AMD)
-  grep -ao '0x[0-9a-fA-F]\{4\}1002' "$plist" 2>/dev/null | sort -u | tr '\n' ' '
+  echo "    id:  $(plistget "$p" CFBundleIdentifier)"
+  echo "    ver: $(plistget "$p" CFBundleVersion)"
+  ids=$(grep -ao '0x[0-9a-fA-F]\{4\}1002' "$p" 2>/dev/null | sort -u | tr '\n' ' ')
+  echo "    ids: ${ids:-(nenhum no Info.plist)}"
+done
+echo
+
+echo "=== PlugIns do HWServices (HWLibs por familia) ==="
+ls -1 "$E"/AMDRadeonX6000HWServices.kext/Contents/PlugIns 2>/dev/null || echo "(nao encontrado)"
+echo
+
+echo "=== PERGUNTA CENTRAL: existe algum vestigio de RDNA 3 na pilha? ==="
+# Se algo aqui retornar resultado, muda a analise. Esperado: nada.
+found=0
+while IFS= read -r bin; do
+  hits=$(strings -a "$bin" 2>/dev/null \
+    | grep -oiE 'gfx11[0-9]{2}|gc_11_[0-9]_[0-9]|dcn3[._]?2|smu_13|navi3[0-9]|rs64|mes_11' \
+    | sort | uniq -c | sort -rn)
+  if [ -n "$hits" ]; then
+    echo "--- $(basename "$bin")"; echo "$hits" | sed 's/^/    /'; found=1
+  fi
+done < <(find "$E" -type f -perm -u+x -path "*AMD*" 2>/dev/null)
+[ "$found" = 0 ] && echo "NENHUM vestigio de RDNA 3 encontrado (resultado esperado)."
+echo
+
+echo "=== Controle: ASICs RDNA 2 que a pilha conhece ==="
+while IFS= read -r bin; do
+  hits=$(strings -a "$bin" 2>/dev/null \
+    | grep -oiE 'gfx10[0-9]{2}|gc_10_3[_0-9]*|dcn3[._]?0[0-9]?|smu_11|navi2[0-9]|sienna|dimgrey|navy_flounder|beige_goby' \
+    | sort | uniq -c | sort -rn | head -12)
+  [ -n "$hits" ] && { echo "--- $(basename "$bin")"; echo "$hits" | sed 's/^/    /'; }
+done < <(find "$E" -type f -perm -u+x -path "*AMD*" 2>/dev/null)
+echo
+
+if [ "$LIVE" = 1 ]; then
+  echo "=== GPU vista pelo sistema agora ==="
+  ioreg -rw0 -c IOPCIDevice 2>/dev/null \
+    | grep -E '"(model|IOName|vendor-id|device-id|revision-id|IOClass)"' | head -40
   echo
-done
-echo
-
-echo "=== Personalities de controller (mapeamento ASIC -> driver) ==="
-for k in "$E"/AMDRadeonX6000*.kext "$E"/AMDRadeonX6800*.kext; do
-  [ -d "$k" ] || continue
-  echo "--- $(basename "$k")"
-  /usr/libexec/PlistBuddy -c "Print :IOKitPersonalities" "$k/Contents/Info.plist" 2>/dev/null \
-    | grep -E "IOClass|IOPCIMatch|IOName|CFBundleIdentifier" | sed 's/^ */  /'
-done
-echo
-
-echo "=== Bundles de acelerador por ASIC (dentro do X6000 framework) ==="
-find "$E" -maxdepth 6 -name "*.plugin" -o -maxdepth 6 -name "AMDRadeon*Bundle*" 2>/dev/null | head -40
-ls -1 /System/Library/Extensions/AMDRadeonX6000HWServices.kext/Contents/PlugIns 2>/dev/null
-echo
-
-echo "=== Drivers Metal instalados (userspace) ==="
-ls -1 /System/Library/Frameworks/Metal.framework/Versions/A/Resources 2>/dev/null | head -20
-ls -1d /System/Library/Extensions/AMDRadeonX*.kext/Contents/MacOS/* 2>/dev/null
-echo
-
-echo "=== ASICs que o AMDRadeonX6000HWLibs conhece (strings) ==="
-HWLIB=$(find "$E" -name "AMDRadeonX6000HWLibs*" -maxdepth 4 2>/dev/null | head -1)
-if [ -n "${HWLIB:-}" ]; then
-  strings -a "$HWLIB" 2>/dev/null \
-    | grep -oiE 'navi[0-9]{2}|sienna|dimgrey|navy_flounder|beige_goby|gfx10[0-9]{2}|gfx11[0-9]{2}|dcn[0-9_]+' \
-    | sort | uniq -c | sort -rn | head -40
-else
-  echo "(AMDRadeonX6000HWLibs nao encontrado)"
+  system_profiler SPDisplaysDataType 2>/dev/null
 fi
-echo
-
-echo "=== GPU vista pelo sistema agora ==="
-ioreg -rw0 -c IOPCIDevice -k IOName 2>/dev/null \
-  | grep -E '"(model|IOName|vendor-id|device-id|revision-id|IOClass)"' | head -40
-echo
-system_profiler SPDisplaysDataType 2>/dev/null

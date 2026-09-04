@@ -129,3 +129,48 @@ SMU 13 na pilha instalada?** Se a resposta for "nenhum" (esperado), o item 5
 da secao 3 do `01-delta` esta confirmado e a analise se encerra. Se aparecer
 qualquer simbolo `gfx11`, `dcn32` ou `smu_13`, ai muda a conversa e vale
 investigar.
+
+---
+
+## 7. Qual macOS instalar, e o prazo do projeto
+
+Dois fatos com impacto direto no escopo:
+
+**macOS Tahoe 26 e a ultima versao que suporta Intel.** A partir do macOS 27 o
+suporte a Intel acaba. Isso da ao projeto um prazo de validade: mesmo um driver
+hipoteticamente pronto teria como alvo um sistema em fim de vida, sem mais
+atualizacoes de seguranca a partir do fim do ciclo do Tahoe.
+
+**Nenhuma versao do macOS tem suporte a RDNA 3.** As RX 6000 (RDNA 2) sao
+suportadas no Tahoe; as RX 7000 nao, em nenhuma versao. Trocar de versao de
+macOS nao altera nada da analise das secoes 1-6.
+
+### O bloqueio pratico para a fase 2
+
+Ha um problema de ordem antes do problema tecnico: **para rodar o inventario e
+preciso conseguir video.** Com apenas uma RX 7600 na maquina nao ha driver de
+framebuffer, entao nao ha desktop para abrir o Terminal.
+
+Saidas, em ordem de preferencia:
+
+1. **iGPU do processador.** Se o CPU tiver grafico integrado habilitado, ele da
+   o video e o sistema instala normalmente. E o caminho mais simples.
+2. **Terminal do Recovery.** O Recovery usa um caminho de video basico e
+   costuma funcionar sem driver acelerado. Monte o volume do sistema
+   (`diskutil list` para achar) e rode:
+   ```
+   ./dump_macos_amd_stack.sh --root "/Volumes/Macintosh HD" > relatorio.txt
+   ```
+   O script foi escrito para funcionar nesse modo, sem macOS bootado.
+3. **Uma GPU suportada emprestada** so para instalar e inventariar.
+
+O modo `--root` tambem serve para inventariar de um segundo Mac, ou de um
+volume montado por outro sistema.
+
+### Sobre a versao especifica
+
+Para o inventario, a versao exata do Tahoe (26.5, 26.6.x) e indiferente: o
+particionamento da pilha AMD nao muda entre releases de ponto. Se o objetivo
+for tambem ter um sistema estavel para trabalhar, uma release de ponto anterior
+a mais recente tende a ter mais relatos de compatibilidade acumulados na
+comunidade OpenCore.

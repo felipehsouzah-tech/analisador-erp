@@ -22,9 +22,11 @@ real que um kext de terceiro alcanca: **28 pontos de contato**, quase todos
 tabelas de ASIC, mais firmware embarcado. Depois mostra, ponto a ponto, por
 que nenhum deles se traduz para Navi 33.
 
-**Fase 2 (pendente, precisa de um Mac):** rodar `tools/dump_macos_amd_stack.sh`
-para fechar a ultima duvida — se existe qualquer vestigio de gfx11 / DCN 3.2 /
-SMU 13 na pilha instalada.
+**Fase 2 (pendente, precisa de um macOS instalado):** rodar
+`tools/dump_macos_amd_stack.sh` para fechar a ultima duvida — se existe
+qualquer vestigio de gfx11 / DCN 3.2 / SMU 13 na pilha instalada. O script
+roda tambem no Terminal do Recovery, via `--root`, sem precisar de GPU
+acelerada (ver secao 7 do documento).
 
 ## Reproduzir a analise
 
@@ -45,7 +47,11 @@ python3 tools/isa_delta.py --a 10_1_0 --b 10_3_0   # RDNA 1 vs RDNA 2 (referenci
 ## Fase 2: rodar no Mac
 
 ```bash
-./tools/dump_macos_amd_stack.sh > relatorio-$(sw_vers -productVersion).txt
+# macOS bootado
+./tools/dump_macos_amd_stack.sh > relatorio.txt
+
+# ou do Terminal do Recovery, sem precisar de video acelerado
+./tools/dump_macos_amd_stack.sh --root "/Volumes/Macintosh HD" > relatorio.txt
 ```
 
 Somente leitura: nao copia binarios da Apple e nao altera nada no sistema.
