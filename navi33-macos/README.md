@@ -54,6 +54,10 @@ driver, nao um kext de patch. O alvo e **aceleracao**: o driver de display
 `docs/09-fase5-metal-gfx11.md` mede o back-end gfx11 para Metal, com dados
 gerados por `tools/isa_codegen_diff.sh`.
 
+**Comece por aqui:** `docs/11-o-que-voce-precisa-de-fato.md` — a receita
+minima. Para levantar a ABI nao e preciso macOS rodando nem VM: bastam os
+arquivos do instalador, Python e 7-Zip 22+.
+
 ## Reproduzir a analise
 
 ```bash
@@ -96,12 +100,14 @@ docs/07-ambiente-em-vm.md        o que da para fazer em VM, e o que nao da
 docs/08-o-que-e-o-driver.md      definicao do deliverable
 docs/09-fase5-metal-gfx11.md     o back-end gfx11 para Metal (o alvo)
 docs/10-legibilidade-dos-binarios.md  o que da para ler nos binarios, e o que nao
+docs/11-o-que-voce-precisa-de-fato.md receita minima para comecar
 tools/fetch_sources.sh           baixa as fontes publicas de referencia
 tools/isa_delta.py               diff de feature set de ISA (LLVM AMDGPU.td)
 tools/ip_refs.sh                 contagem de referencias a blocos de IP
 tools/isa_codegen_diff.sh        diff da ISA emitida: gfx1032 vs gfx1102
 tools/dump_binary_abi.sh         extrai a ABI de um Mach-O (roda no Linux)
 tools/abi_intersect.sh           isola o contrato da Apple de varios plugins
+tools/macho_abi.py               ABI de Mach-O em Python puro (Windows nativo)
 tools/scan_amd_stack.py          inventario da pilha AMD (Linux/macOS, fase 2)
 tools/dump_macos_amd_stack.sh    variante em shell, para macOS bootado
 data/isa_features.json           saida capturada do diff gfx1032 vs gfx1102
