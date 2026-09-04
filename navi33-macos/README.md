@@ -22,11 +22,11 @@ real que um kext de terceiro alcanca: **28 pontos de contato**, quase todos
 tabelas de ASIC, mais firmware embarcado. Depois mostra, ponto a ponto, por
 que nenhum deles se traduz para Navi 33.
 
-**Fase 2 (pendente, precisa de um macOS instalado):** rodar
-`tools/dump_macos_amd_stack.sh` para fechar a ultima duvida — se existe
-qualquer vestigio de gfx11 / DCN 3.2 / SMU 13 na pilha instalada. O script
-roda tambem no Terminal do Recovery, via `--root`, sem precisar de GPU
-acelerada (ver secao 7 do documento).
+**Fase 2 (pendente, so falta rodar):** `docs/03-inventario-sem-mac.md` resolve
+o bloqueio pratico. Com Ryzen 3600X (sem iGPU) e apenas uma RX 7600, o macOS
+nao chega ao desktop — nao ha driver de framebuffer. Entao o inventario nao
+passa por bootar o macOS: `tools/scan_amd_stack.py` roda no Linux, em Python
+puro, contra a imagem do instalador montada. Falta so executar.
 
 ## Reproduzir a analise
 
@@ -47,13 +47,14 @@ python3 tools/isa_delta.py --a 10_1_0 --b 10_3_0   # RDNA 1 vs RDNA 2 (referenci
 ## Fase 2: rodar no Mac
 
 ```bash
-# macOS bootado
-./tools/dump_macos_amd_stack.sh > relatorio.txt
+# Linux, contra a imagem do instalador montada (nao precisa de Mac):
+python3 tools/scan_amd_stack.py --root /mnt/macos/<volume> --out relatorio.txt
 
-# ou do Terminal do Recovery, sem precisar de video acelerado
-./tools/dump_macos_amd_stack.sh --root "/Volumes/Macintosh HD" > relatorio.txt
+# ou, se houver um macOS acessivel:
+python3 tools/scan_amd_stack.py --root / --out relatorio.txt
 ```
 
+Passo a passo da montagem em `docs/03-inventario-sem-mac.md`.
 Somente leitura: nao copia binarios da Apple e nao altera nada no sistema.
 
 ## Estrutura
@@ -61,10 +62,12 @@ Somente leitura: nao copia binarios da Apple e nao altera nada no sistema.
 ```
 docs/01-delta-navi23-navi33.md   delta de hardware Navi 23 vs Navi 33
 docs/02-pilha-macos.md           pilha AMD do macOS e alcance de um kext
+docs/03-inventario-sem-mac.md    como inventariar a partir do Linux
 tools/fetch_sources.sh           baixa as fontes publicas de referencia
 tools/isa_delta.py               diff de feature set de ISA (LLVM AMDGPU.td)
 tools/ip_refs.sh                 contagem de referencias a blocos de IP
-tools/dump_macos_amd_stack.sh    inventario da pilha AMD do macOS (fase 2)
+tools/scan_amd_stack.py          inventario da pilha AMD (Linux/macOS, fase 2)
+tools/dump_macos_amd_stack.sh    variante em shell, para macOS bootado
 data/isa_features.json           saida capturada do diff gfx1032 vs gfx1102
 ```
 

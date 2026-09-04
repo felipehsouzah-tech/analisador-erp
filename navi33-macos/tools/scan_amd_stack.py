@@ -1,0 +1,183 @@
+#!/usr/bin/env python3
+"""
+Inventario SOMENTE-LEITURA da pilha grafica AMD de um sistema macOS.
+
+Roda em Linux, Windows ou macOS: nao usa PlistBuddy, `strings` nem qualquer
+ferramenta da Apple. So precisa de Python 3.8+ e de um caminho para a raiz do
+sistema macOS — que pode ser:
+
+  - o proprio macOS bootado          --root /
+  - um volume montado no Recovery    --root "/Volumes/Macintosh HD"
+  - uma imagem do instalador montada no Linux (apfs-fuse), sem Mac nenhum
+
+Uso:
+    python3 scan_amd_stack.py --root /caminho/da/raiz [--out relatorio.txt]
+
+A pergunta central: existe algum vestigio de RDNA 3 (gfx11xx, gc_11_x_x,
+dcn32, smu_13, navi3x, rs64, mes_11) nos binarios AMD do macOS? O grupo de
+controle RDNA 2 e impresso junto para que um resultado negativo seja
+interpretavel, e nao apenas "o script nao achou nada".
+"""
+
+import argparse
+import plistlib
+import re
+import sys
+from pathlib import Path
+
+# Marcadores de RDNA 3. Se qualquer um aparecer, a analise muda.
+RDNA3 = re.compile(
+    rb"gfx11[0-9]{2}|gc_11_[0-9]_[0-9]|dcn3[._]?2|smu_13|navi3[0-9]|rs64|mes_11",
+    re.I,
+)
+# Grupo de controle: RDNA 2, que sabidamente esta na pilha.
+RDNA2 = re.compile(
+    rb"gfx10[0-9]{2}|gc_10_3[_0-9]*|dcn3[._]?0[0-9]?|smu_11|navi2[0-9]"
+    rb"|sienna|dimgrey|navy_flounder|beige_goby",
+    re.I,
+)
+DEVID = re.compile(rb"0x[0-9a-fA-F]{4}1002")
+
+
+def printable_scan(path, pattern, chunk=8 << 20):
+    """Procura o padrao no arquivo, em blocos, com sobreposicao nas bordas."""
+    hits = {}
+    overlap = 64
+    try:
+        with open(path, "rb") as fh:
+            tail = b""
+            while True:
+                buf = fh.read(chunk)
+                if not buf:
+                    break
+                for m in pattern.finditer(tail + buf):
+                    key = m.group(0).decode("ascii", "replace").lower()
+                    hits[key] = hits.get(key, 0) + 1
+                tail = buf[-overlap:]
+    except (OSError, PermissionError) as e:
+        return None, str(e)
+    return hits, None
+
+
+def read_plist(path):
+    try:
+        with open(path, "rb") as fh:
+            return plistlib.load(fh)
+    except Exception:
+        return None
+
+
+def is_macho(path):
+    try:
+        with open(path, "rb") as fh:
+            magic = fh.read(4)
+    except OSError:
+        return False
+    return magic in (
+        b"\xcf\xfa\xed\xfe", b"\xce\xfa\xed\xfe",   # Mach-O 64/32 LE
+        b"\xfe\xed\xfa\xcf", b"\xfe\xed\xfa\xce",   # BE
+        b"\xca\xfe\xba\xbe", b"\xbe\xba\xfe\xca",   # fat
+    )
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--root", required=True, help="raiz do sistema macOS")
+    ap.add_argument("--out", help="grava o relatorio neste arquivo")
+    args = ap.parse_args()
+
+    root = Path(args.root)
+    ext = root / "System" / "Library" / "Extensions"
+    out = []
+
+    def emit(s=""):
+        out.append(s)
+        print(s)
+
+    if not ext.is_dir():
+        sys.exit("ERRO: nao achei %s\nConfira o --root." % ext)
+
+    emit("=== Contexto ===")
+    emit("root: %s" % root)
+    sv = read_plist(root / "System/Library/CoreServices/SystemVersion.plist")
+    if sv:
+        emit("macOS %s (build %s)" % (sv.get("ProductVersion", "?"),
+                                      sv.get("ProductBuildVersion", "?")))
+    else:
+        emit("(SystemVersion.plist ilegivel)")
+    emit()
+
+    kexts = sorted(p for p in ext.glob("AMD*.kext"))
+    emit("=== Kexts AMD presentes (%d) ===" % len(kexts))
+    for k in kexts:
+        emit("  " + k.name)
+    if not kexts:
+        emit("  (nenhum — este macOS pode nao ter a pilha AMD)")
+    emit()
+
+    emit("=== Bundle IDs, versoes e device IDs declarados ===")
+    for k in kexts:
+        info = read_plist(k / "Contents" / "Info.plist")
+        emit("--- %s" % k.name)
+        if not info:
+            emit("    (Info.plist ilegivel)")
+            continue
+        emit("    id:  %s" % info.get("CFBundleIdentifier", "?"))
+        emit("    ver: %s" % info.get("CFBundleVersion", "?"))
+        raw = (k / "Contents" / "Info.plist").read_bytes()
+        ids = sorted({m.group(0).decode() for m in DEVID.finditer(raw)})
+        emit("    ids: %s" % (" ".join(ids) if ids else "(nenhum aqui)"))
+    emit()
+
+    plugins = ext / "AMDRadeonX6000HWServices.kext" / "Contents" / "PlugIns"
+    emit("=== PlugIns do HWServices (HWLibs por familia) ===")
+    if plugins.is_dir():
+        for p in sorted(plugins.iterdir()):
+            emit("  " + p.name)
+    else:
+        emit("  (nao encontrado)")
+    emit()
+
+    binaries = [p for p in ext.rglob("*")
+                if p.is_file() and "AMD" in str(p) and is_macho(p)]
+
+    emit("=== PERGUNTA CENTRAL: ha vestigio de RDNA 3 na pilha? ===")
+    emit("(binarios Mach-O varridos: %d)" % len(binaries))
+    any3 = False
+    for b in binaries:
+        hits, err = printable_scan(b, RDNA3)
+        if err:
+            emit("--- %s: erro de leitura: %s" % (b.name, err))
+            continue
+        if hits:
+            any3 = True
+            emit("--- %s" % b.relative_to(ext))
+            for k, v in sorted(hits.items(), key=lambda x: -x[1]):
+                emit("    %6d  %s" % (v, k))
+    if not any3:
+        emit("NENHUM vestigio de RDNA 3 encontrado.")
+        emit("Esse e o resultado esperado: confirma a secao 3 do doc 01.")
+    else:
+        emit(">>> ATENCAO: apareceu marcador de RDNA 3. Isso muda a analise.")
+        emit(">>> Verifique se nao e falso positivo (ex.: 'rs64' em outro contexto).")
+    emit()
+
+    emit("=== Controle: ASICs RDNA 2 que a pilha conhece ===")
+    emit("(se este bloco tambem vier vazio, a varredura falhou —")
+    emit(" o resultado negativo acima nao valeria nada)")
+    for b in binaries:
+        hits, err = printable_scan(b, RDNA2)
+        if hits:
+            top = sorted(hits.items(), key=lambda x: -x[1])[:10]
+            emit("--- %s" % b.relative_to(ext))
+            for k, v in top:
+                emit("    %6d  %s" % (v, k))
+    emit()
+
+    if args.out:
+        Path(args.out).write_text("\n".join(out) + "\n", encoding="utf-8")
+        print("\n[relatorio gravado em %s]" % args.out)
+
+
+if __name__ == "__main__":
+    main()
