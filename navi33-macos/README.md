@@ -101,6 +101,7 @@ tools/isa_delta.py               diff de feature set de ISA (LLVM AMDGPU.td)
 tools/ip_refs.sh                 contagem de referencias a blocos de IP
 tools/isa_codegen_diff.sh        diff da ISA emitida: gfx1032 vs gfx1102
 tools/dump_binary_abi.sh         extrai a ABI de um Mach-O (roda no Linux)
+tools/abi_intersect.sh           isola o contrato da Apple de varios plugins
 tools/scan_amd_stack.py          inventario da pilha AMD (Linux/macOS, fase 2)
 tools/dump_macos_amd_stack.sh    variante em shell, para macOS bootado
 data/isa_features.json           saida capturada do diff gfx1032 vs gfx1102

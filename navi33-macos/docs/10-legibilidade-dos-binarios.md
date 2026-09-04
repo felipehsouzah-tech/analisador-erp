@@ -117,3 +117,79 @@ plausivel do que este repositorio vinha assumindo. Se revelarem centenas de
 metodos entrelacados com estruturas opacas, o contrario.
 
 **Isso e mensuravel, e ninguem precisa adivinhar.**
+
+---
+
+## 7. "Mas essa ABI nao e da RX 7600" — por que ela serve mesmo assim
+
+Objecao correta e importante. A resposta tem duas partes.
+
+### 7.1 A ABI que interessa nao e da GPU, e da Apple
+
+O `AMDRadeonX6000MTLDriver.bundle` e a **implementacao** para gfx10.3. A
+**interface** que ele implementa e o contrato de plugin do Metal — e esse
+contrato precisa ser o mesmo para AMD, Intel e (antes) NVIDIA, senao a Apple
+nao conseguiria carregar plugins de fornecedores diferentes com o mesmo
+mecanismo (`MetalPluginName`, secao 6 do doc 09).
+
+O que precisamos satisfazer e o contrato, nao a implementacao. E o contrato
+esta visivel em **qualquer** implementacao dele.
+
+### 7.2 Como separar um do outro: intersecao
+
+Havendo varias implementacoes independentes da mesma interface, da para
+isola-la:
+
+```
+simbolos comuns a fornecedores diferentes  = contrato da Apple
+simbolos exclusivos de um fornecedor       = implementacao dele
+```
+
+Os plugins da Intel (`AppleIntelKBLGraphicsMTLDriver`, ICL, etc.) sao
+especialmente valiosos aqui: sendo de **outro fornecedor**, tudo que eles tem
+em comum com o plugin da AMD e necessariamente lado Apple — nao pode ser
+detalhe de AMD.
+
+`tools/abi_intersect.sh` faz isso. Verificado sobre dois Mach-O sinteticos que
+implementam a mesma interface e divergem no resto:
+
+```
+=== CONTRATO — comum a todas as implementacoes (8) ===
+  MTLPluginBase::pluginInitialize(void*)
+  MTLPluginBase::newCompilerContext(unsigned int)
+  MTLPluginBase::compileAIR(void const*, unsigned int, void**)
+  MTLPluginBase::pluginTeardown()
+  vtable for MTLPluginBase
+=== ESPECIFICO ===
+  vendorA   5 exclusivos de 13 (38.5%)
+  vendorB   4 exclusivos de 12 (33.3%)
+```
+
+A ferramenta separou o contrato do que e especifico de cada um. Com os bundles
+reais, o mesmo procedimento diz **quanto** do plugin e contrato e quanto e
+trabalho novo — que e exatamente a medida que falta para dimensionar a fase 5.
+
+### 7.3 O segundo valor: um exemplo resolvido
+
+Alem do contrato, o bundle do Navi 23 e **um caso resolvido do problema que
+queremos resolver**: uma GPU AMD funcionando dentro das interfaces da Apple.
+
+Boa parte desse mapeamento nao e especifica do gfx10.3 — gerenciamento de
+memoria, submissao de comando, ciclo de vida do contexto, tratamento de erro.
+Essa parte transfere direto. O que muda e a geracao de codigo, que e justamente
+a parte que o LLVM aberto ja resolve para gfx1102 (doc 09, secao 2).
+
+O mesmo raciocinio vale um nivel abaixo, nos kexts: `AMDRadeonX6000` mostra
+como um driver AMD satisfaz `IOAccelerator`. A forma e reaproveitavel; o
+conteudo de hardware e que muda.
+
+### 7.4 O limite honesto
+
+Nada disso entrega semantica (secao 4). A intersecao diz **quais** metodos o
+Metal chama e com que tipos — nao em que ordem, nem o que precisa estar dentro
+dos ponteiros. Isso continua saindo de desmontagem e teste.
+
+O que a intersecao entrega e **dimensionamento**: se o contrato comum for
+pequeno e estavel, a fase 5 tem um alvo definido. Se for enorme e entrelacado,
+nao tem. Hoje o projeto nao sabe qual dos dois e — e essa e uma das poucas
+incognitas grandes que da para eliminar **sem** a RX 7600 e **sem** bare metal.
