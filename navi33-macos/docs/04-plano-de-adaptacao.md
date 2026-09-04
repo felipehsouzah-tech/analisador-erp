@@ -185,8 +185,11 @@ e nao da para distinguir "o kext nao carregou" de "travou no bring-up da IMU".
 - **Entrega:** depuracao de kernel por rede (KDP) via ethernet, com um segundo
   computador rodando o depurador; `boot-args` com `debug=0x144 -v keepsyms=1`.
 - **Sucesso:** conseguir parar o kernel do alvo e ler um backtrace remoto.
-- **Nota:** no seu hardware (3600X sem iGPU, so a RX 7600) esta e a **unica**
-  via de diagnostico possivel.
+- **Nota:** em bare metal (3600X sem iGPU, so a RX 7600) esta e a unica via de
+  diagnostico. **Ver `07-ambiente-em-vm.md`:** num host Linux com KVM/VFIO a
+  VM tem GPU virtual para console *e* a RX 7600 real por passthrough, o que
+  faz o papel da segunda placa e reduz o ciclo de panic de minutos para
+  segundos, com snapshot. Nesse cenario o KDP vira complemento, nao unica via.
 
 ### Fase 1 — Matching e carga
 - **Entrega:** kext que casa `1002:7480`, publica um `IOService` e nao entra em

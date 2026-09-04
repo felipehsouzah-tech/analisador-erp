@@ -43,6 +43,11 @@ muda quando o trabalho e feito com modelos atuais. Resumo: o argumento de
 volume de codigo perdeu forca; o de informacao nao publicada e ciclo de teste
 em hardware, nao.
 
+**Ambiente em VM:** `docs/07-ambiente-em-vm.md` — macOS em VM resolve o
+inventario e o ambiente de build de imediato; e num host Linux com VFIO a VM
+fica *melhor* que bare metal para a fase 0, porque a GPU virtual faz o papel da
+segunda placa ausente.
+
 ## Reproduzir a analise
 
 ```bash
@@ -81,6 +86,7 @@ docs/03-inventario-sem-mac.md    como inventariar a partir do Linux
 docs/04-plano-de-adaptacao.md    arquitetura e plano de implementacao
 docs/05-estado-da-arte.md        trabalho anterior e o que ele corrigiu aqui
 docs/06-o-que-muda-com-llm.md    o que muda no plano com LLM no circuito
+docs/07-ambiente-em-vm.md        o que da para fazer em VM, e o que nao da
 tools/fetch_sources.sh           baixa as fontes publicas de referencia
 tools/isa_delta.py               diff de feature set de ISA (LLVM AMDGPU.td)
 tools/ip_refs.sh                 contagem de referencias a blocos de IP
