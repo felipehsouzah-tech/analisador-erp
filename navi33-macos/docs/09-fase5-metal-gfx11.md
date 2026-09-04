@@ -94,9 +94,9 @@ O ponteiro de argumentos chega em SGPRs diferentes. Isso e visivel do lado do
 
 ## 4. O que joga contra
 
-- **O pipeline da Apple e fechado.** O back-end gfx11 do LLVM existe, mas o
-  problema nao e gerar ISA — e fazer o Metal da Apple *chamar* esse gerador.
-  A interface entre o runtime Metal e o compilador de ASIC nao e documentada.
+- **A ABI interna do bundle e fechada.** O *ponto de insercao* esta
+  identificado (secao 6), mas o contrato que o Metal espera encontrar dentro do
+  bundle nao esta documentado. E o que resta de engenharia reversa aqui.
 - **Nao ha exemplo anterior.** Nem o NootRX chegou perto dessa fronteira.
 - **Depende de tudo antes.** Nao adianta compilador correto sem a GPU sair do
   reset (fase 2) e sem filas funcionando (fase 3).
@@ -113,18 +113,67 @@ Trabalho real desta fase, executavel deste ambiente:
 3. **Montar um harness de verificacao** que compare ISA emitida contra
    referencia, para servir de teste de regressao quando houver back-end.
 
-## 6. O que a VM precisa responder
+## 6. O ponto de insercao — ENCONTRADO
 
-A VM e instrumento de pesquisa desta fase. As perguntas concretas:
+As quatro perguntas desta secao estavam listadas como "a VM precisa
+responder". **Duas foram respondidas por fonte publica**, e a resposta muda a
+arquitetura da fase 5.
 
-1. **Onde vive o compilador AIR → ISA?** Bundle, framework, plugin — o
-   `scan_amd_stack.py` agora procura candidatos (`*MTLDriver*`,
-   `*mtlcompiler*`, `*GPUCompiler*`).
-2. **Como o Metal seleciona o back-end por ASIC?** E o ponto de insercao.
-3. **O AIR e versionado por familia de GPU**, ou e neutro e so o back-end muda?
-4. **O que o `MTLDevice` exige** para publicar um dispositivo — quais
-   propriedades o kext precisa expor.
+### A cadeia real
 
-Essas quatro respostas definem se a fase 5 tem um ponto de entrada viavel. Sao
-obtiveis numa VM, sem a RX 7600 presente — e por isso podem vir **antes** da
-fase 2.
+```
+1. o kext publica um IOAccelerator
+2. esse IOAccelerator carrega a propriedade  MetalPluginName  no IORegistry
+   (ex.: "AppleIntelHD5000GraphicsMTLDriver")
+3. o Metal le essa propriedade e carrega o bundle de userspace correspondente
+   em /System/Library/Extensions/<nome>.bundle
+4. esse bundle contem o driver Metal, incluindo o JIT AIR -> ISA
+```
+
+Que `MetalPluginName` e o elo real esta confirmado pela mensagem de erro do
+proprio Metal quando ela falta:
+
+> "Unable to locate MetalPluginName property or is of the wrong type"
+
+Os bundles existem e sao conhecidos:
+`/System/Library/Extensions/AMDRadeonX6000MTLDriver.bundle`,
+`AMDMTLBronzeDriver.bundle` — **userspace, nao kext**.
+
+### Por que isso importa tanto
+
+O documento assumia que a fase 5 exigiria modificar o compilador fechado da
+Apple. **Nao exige.** O ponto de insercao e declarativo: o driver publica um
+`IOAccelerator` cujo `MetalPluginName` aponta para **um bundle nosso**.
+
+Ou seja, o back-end gfx11 nao precisa ser enxertado no codigo da Apple — ele e
+codigo proprio, num bundle proprio, e o LLVM aberto ja gera gfx1102 (secao 2).
+
+### O que ainda nao esta respondido
+
+**A ABI interna do bundle.** Saber que o Metal carrega o bundle nao diz qual
+interface ele espera encontrar la dentro: quais simbolos, quais classes, qual
+contrato. Isso nao esta documentado, e continua sendo o trabalho de engenharia
+reversa da fase 5 — agora concentrado num alvo unico e identificado
+(`AMDRadeonX6000MTLDriver.bundle`), em vez de espalhado.
+
+### Sobre o AIR (pergunta 3): respondida
+
+AIR e **bitcode LLVM** dentro de um container `metallib`. O formato ja foi
+revertido publicamente e ha ferramental aberto (`MetalShaderTools`,
+`unmetallib.py`), alem das proprias ferramentas da Apple (`metal-as`,
+`metal-objdump`, `metallib`). O AIR nao e especifico por ASIC — quem e
+especifico e o JIT dentro do bundle. Isso confirma o desenho: **um bundle novo
+por familia de GPU, com o AIR igual entrando nos dois**.
+
+## 7. O que resta para a VM
+
+Reduziu para duas perguntas, ambas empiricas:
+
+1. **Qual a ABI interna do bundle MTLDriver?** Alvo unico: desmontar o
+   `AMDRadeonX6000MTLDriver.bundle` e mapear a interface que o Metal chama.
+   E o item de maior valor do projeto inteiro que nao depende da RX 7600.
+2. **Que propriedades o `IOAccelerator` precisa expor** alem de
+   `MetalPluginName` para o `MTLDevice` aparecer.
+
+Ambas obtiveis numa VM, sem a GPU presente — portanto **antes** da fase 2. O
+`scan_amd_stack.py` ja localiza os bundles candidatos.
