@@ -23,10 +23,15 @@ AIR  --(runtime, driver Metal em userspace)-->  ISA da GPU
 A traducao AIR → ISA e feita por um driver Metal em **userspace**, nao pelo
 kext. Por isso `AMDRadeonX6000.kext` sozinho nao explica a aceleracao.
 
-**Nao ha prior art aqui.** Verificado no codigo do NootRX: seus unicos patches
-de userspace (`DYLDPatches.cpp`) tratam de DRM do VideoToolbox e de CPUID para
-streaming — nada de compilador. O NootRX depende inteiramente do back-end
-gfx10.3 que a Apple ja tem. Para gfx11 ninguem, em lugar nenhum, tocou nisso.
+**Nao ha prior art conhecido aqui.** Verificado no codigo do NootRX: seus
+unicos patches de userspace (`DYLDPatches.cpp`) tratam de DRM do VideoToolbox e
+de CPUID para streaming — nada de compilador. O NootRX depende inteiramente do
+back-end gfx10.3 que a Apple ja tem.
+
+> Precisao: isso mostra que esses projetos **nao precisaram** mexer no bundle
+> Metal — nao que ninguem o tenha desmontado. A afirmacao sustentada pelos
+> dados e mais estreita: nao ha projeto publico conhecido que implemente um
+> back-end Metal para GPU nao suportada. Ver `10-legibilidade-dos-binarios.md`.
 
 ## 2. O tamanho do trabalho, medido
 
