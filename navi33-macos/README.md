@@ -38,6 +38,11 @@ mantenedor do NootRX confirma de forma independente que RDNA 3 exigiria
 reimplementar o HWLibs; e a Apple nunca entregou driver nem para as Radeon Pro
 W7800/W7900, sucessoras diretas das W6800 que ela mesma suportava.
 
+**Viabilidade com LLM:** `docs/06-o-que-muda-com-llm.md` avalia quanto do plano
+muda quando o trabalho e feito com modelos atuais. Resumo: o argumento de
+volume de codigo perdeu forca; o de informacao nao publicada e ciclo de teste
+em hardware, nao.
+
 ## Reproduzir a analise
 
 ```bash
@@ -75,6 +80,7 @@ docs/02-pilha-macos.md           pilha AMD do macOS e alcance de um kext
 docs/03-inventario-sem-mac.md    como inventariar a partir do Linux
 docs/04-plano-de-adaptacao.md    arquitetura e plano de implementacao
 docs/05-estado-da-arte.md        trabalho anterior e o que ele corrigiu aqui
+docs/06-o-que-muda-com-llm.md    o que muda no plano com LLM no circuito
 tools/fetch_sources.sh           baixa as fontes publicas de referencia
 tools/isa_delta.py               diff de feature set de ISA (LLVM AMDGPU.td)
 tools/ip_refs.sh                 contagem de referencias a blocos de IP
