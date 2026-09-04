@@ -28,6 +28,11 @@ nao chega ao desktop — nao ha driver de framebuffer. Entao o inventario nao
 passa por bootar o macOS: `tools/scan_amd_stack.py` roda no Linux, em Python
 puro, contra a imagem do instalador montada. Falta so executar.
 
+**Plano de adaptacao:** `docs/04-plano-de-adaptacao.md` descreve como a
+adaptacao ocorreria — a cadeia que o macOS percorre para acender a tela, o que
+a RX 7600 tem por dentro, o que precisaria ser adaptado em cada elo, e o plano
+em 6 fases com criterio de sucesso e de parada por fase.
+
 ## Reproduzir a analise
 
 ```bash
@@ -63,6 +68,7 @@ Somente leitura: nao copia binarios da Apple e nao altera nada no sistema.
 docs/01-delta-navi23-navi33.md   delta de hardware Navi 23 vs Navi 33
 docs/02-pilha-macos.md           pilha AMD do macOS e alcance de um kext
 docs/03-inventario-sem-mac.md    como inventariar a partir do Linux
+docs/04-plano-de-adaptacao.md    arquitetura e plano de implementacao
 tools/fetch_sources.sh           baixa as fontes publicas de referencia
 tools/isa_delta.py               diff de feature set de ISA (LLVM AMDGPU.td)
 tools/ip_refs.sh                 contagem de referencias a blocos de IP

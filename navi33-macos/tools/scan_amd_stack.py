@@ -80,6 +80,40 @@ def is_macho(path):
     )
 
 
+def find_extensions(root, max_depth=8):
+    """Localiza System/Library/Extensions sob root.
+
+    A extracao por 7-Zip no Windows aninha as pastas de forma imprevisivel
+    (IA/SharedSupport/.../AssetData/...), entao exigir o caminho exato faz o
+    script falhar por um motivo que nao e o interessante. Procura em largura
+    e devolve a primeira arvore que realmente tenha kexts AMD; se nenhuma
+    tiver, devolve a primeira Extensions encontrada.
+    """
+    direct = root / "System" / "Library" / "Extensions"
+    if direct.is_dir():
+        return direct
+
+    fallback = None
+    queue = [(root, 0)]
+    while queue:
+        cur, depth = queue.pop(0)
+        if depth > max_depth:
+            continue
+        try:
+            entries = sorted(p for p in cur.iterdir() if p.is_dir())
+        except (OSError, PermissionError):
+            continue
+        for d in entries:
+            if d.name == "Extensions" and d.parent.name == "Library" \
+               and d.parent.parent.name == "System":
+                if any(d.glob("AMD*.kext")):
+                    return d
+                if fallback is None:
+                    fallback = d
+            queue.append((d, depth + 1))
+    return fallback
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--root", required=True, help="raiz do sistema macOS")
@@ -87,19 +121,25 @@ def main():
     args = ap.parse_args()
 
     root = Path(args.root)
-    ext = root / "System" / "Library" / "Extensions"
+    ext = find_extensions(root)
     out = []
 
     def emit(s=""):
         out.append(s)
         print(s)
 
-    if not ext.is_dir():
-        sys.exit("ERRO: nao achei %s\nConfira o --root." % ext)
+    if ext is None:
+        sys.exit(
+            "ERRO: nao achei System/Library/Extensions sob %s\n"
+            "Extracao por 7-Zip costuma aninhar pastas; aponte --root para a\n"
+            "pasta que contem a arvore extraida e o script procura sozinho." % root
+        )
+    sysroot = ext.parent.parent.parent
 
     emit("=== Contexto ===")
-    emit("root: %s" % root)
-    sv = read_plist(root / "System/Library/CoreServices/SystemVersion.plist")
+    emit("root informado: %s" % root)
+    emit("raiz do sistema: %s" % sysroot)
+    sv = read_plist(sysroot / "System/Library/CoreServices/SystemVersion.plist")
     if sv:
         emit("macOS %s (build %s)" % (sv.get("ProductVersion", "?"),
                                       sv.get("ProductBuildVersion", "?")))
