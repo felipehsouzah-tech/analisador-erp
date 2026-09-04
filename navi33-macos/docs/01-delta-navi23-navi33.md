@@ -3,6 +3,8 @@
 **Metodo.** Todos os numeros abaixo foram extraidos de fontes publicas e
 verificaveis — o driver `amdgpu` do kernel Linux e o back-end AMDGPU do LLVM —
 e sao reproduziveis com `tools/fetch_sources.sh` + `tools/isa_delta.py`.
+As contagens de referencia usam limite de identificador (`\b(mes|MES)[_a-zA-Z0-9]*`),
+nao substring: um grep ingenuo por "mes" casa com `times`/`names` e infla o numero.
 Nenhum dado veio de memoria ou de estimativa. Onde ha incerteza, esta marcado
 como **[a verificar]**.
 
@@ -82,8 +84,8 @@ Aqui o salto e maior que na ISA, e e mensuravel:
 ### 2.1 O Command Processor mudou de CPU
 
 ```
-referencias a "rs64" em gfx_v11_0.c (Navi 3x): 144
-referencias a "rs64" em gfx_v10_0.c (Navi 2x):   0
+ocorrencias de "rs64" em gfx_v11_0.c (Navi 3x): 145
+ocorrencias de "rs64" em gfx_v10_0.c (Navi 2x):   0
 ```
 
 No RDNA 2 os microengines do CP (PFP/ME/MEC) sao cores **F32**. No RDNA 3 sao
@@ -123,12 +125,16 @@ nao ha de onde carrega-lo dentro da pilha da Apple.
 ### 2.4 Blocos inteiramente novos que o driver teria que implementar
 
 - **MES (Micro Engine Scheduler)** — 2.092 linhas so em `mes_v11_0.c`. E o
-  escalonador de filas em hardware do RDNA 3. Nao existe no RDNA 2 (37
-  referencias a MES em `gfx_v11_0.c`, e o proprio SDMA v6 depende dele: 14
-  referencias). O modelo de submissao de trabalho e diferente.
-- **IMU (Infrastructure Management Unit)** — 38 referencias no gfx11 contra 4
-  no gfx10. Faz o power-up e a inicializacao do bloco grafico. Sem trazer a
-  IMU, a GPU nao sai do reset.
+  escalonador de filas em hardware. Contando identificadores (nao substring),
+  ha **26** referencias a MES em `gfx_v11_0.c` e **zero** em `gfx_v10_0.c`. O
+  SDMA v6 tambem passa a depender dele: `sdma_v6_0.c` faz
+  `#include "mes_userqueue.h"`, ou seja, as filas de usuario do DMA agora
+  saem pelo MES. Existe firmware de MES para
+  RDNA 2, mas o caminho grafico do RDNA 2 nao passa por ele — no RDNA 3 ele e
+  central. O modelo de submissao de trabalho e diferente.
+- **IMU (Infrastructure Management Unit)** — **29** referencias no gfx11 e
+  **zero** no gfx10: o bloco e novo no RDNA 3. Faz o power-up e a
+  inicializacao do bloco grafico. Sem trazer a IMU, a GPU nao sai do reset.
 - **PSP / TOC** — sequencia de boot seguro diferente.
 
 ### 2.5 Display: DCN 3.0.2 -> DCN 3.2.1
