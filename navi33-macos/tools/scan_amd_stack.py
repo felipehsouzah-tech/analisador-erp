@@ -25,11 +25,24 @@ import re
 import sys
 from pathlib import Path
 
-# Marcadores de RDNA 3. Se qualquer um aparecer, a analise muda.
-RDNA3 = re.compile(
-    rb"gfx11[0-9]{2}|gc_11_[0-9]_[0-9]|dcn3[._]?2|smu_13|navi3[0-9]|rs64|mes_11",
+# A busca por RDNA 3 e dividida em dois niveis, e a distincao importa.
+#
+# NIVEL 1 — marcadores de IMPLEMENTACAO. Sao nomes que so aparecem se houver
+# codigo real de gfx11 (firmware, blocos de display, microengine). Se algum
+# destes aparecer, a premissa do projeto cai e a analise precisa ser refeita.
+RDNA3_IMPL = re.compile(
+    rb"gfx11[0-9]{2}|gc_11_[0-9]_[0-9]|dcn3[._]?2[01]?|smu_13|mes_11|rs64",
     re.I,
 )
+# NIVEL 2 — apenas o NOME do ASIC. Isto NAO prova implementacao.
+#
+# Contexto historico: em 2020, numa beta do Big Sur, foi encontrada no
+# AMDRadeonX6000HWServices uma referencia a "Navi 31" com 80 CUs / 5120
+# shaders, ao lado das entradas de Navi 21/22/23. A leitura na epoca foi que
+# a Apple teria trabalho de RDNA 3 planejado — que nunca se materializou em
+# driver. Entao encontrar "navi3x" aqui e um falso positivo esperado, nao uma
+# descoberta: e um nome numa tabela, sem codigo por tras.
+RDNA3_NAME = re.compile(rb"navi3[0-9]", re.I)
 # Grupo de controle: RDNA 2, que sabidamente esta na pilha.
 RDNA2 = re.compile(
     rb"gfx10[0-9]{2}|gc_10_3[_0-9]*|dcn3[._]?0[0-9]?|smu_11|navi2[0-9]"
@@ -181,25 +194,47 @@ def main():
     binaries = [p for p in ext.rglob("*")
                 if p.is_file() and "AMD" in str(p) and is_macho(p)]
 
-    emit("=== PERGUNTA CENTRAL: ha vestigio de RDNA 3 na pilha? ===")
+    emit("=== NIVEL 1: ha IMPLEMENTACAO de RDNA 3 na pilha? ===")
     emit("(binarios Mach-O varridos: %d)" % len(binaries))
-    any3 = False
+    emit("Procurando: gfx11xx, gc_11_x_x, dcn32/321, smu_13, mes_11, rs64")
+    impl = False
     for b in binaries:
-        hits, err = printable_scan(b, RDNA3)
+        hits, err = printable_scan(b, RDNA3_IMPL)
         if err:
             emit("--- %s: erro de leitura: %s" % (b.name, err))
             continue
         if hits:
-            any3 = True
+            impl = True
             emit("--- %s" % b.relative_to(ext))
             for k, v in sorted(hits.items(), key=lambda x: -x[1]):
                 emit("    %6d  %s" % (v, k))
-    if not any3:
-        emit("NENHUM vestigio de RDNA 3 encontrado.")
-        emit("Esse e o resultado esperado: confirma a secao 3 do doc 01.")
+    if not impl:
+        emit("NENHUMA implementacao de RDNA 3 encontrada.")
+        emit("Resultado esperado: confirma a premissa do plano (modelo B).")
     else:
-        emit(">>> ATENCAO: apareceu marcador de RDNA 3. Isso muda a analise.")
-        emit(">>> Verifique se nao e falso positivo (ex.: 'rs64' em outro contexto).")
+        emit(">>> A PREMISSA DO PROJETO CAIU. Ha codigo gfx11 na pilha.")
+        emit(">>> Reveja docs/04: o plano encolhe do modelo B para o modelo A.")
+        emit(">>> Antes disso, descarte falso positivo: 'rs64' pode aparecer")
+        emit(">>> em contexto sem relacao com o command processor.")
+    emit()
+
+    emit("=== NIVEL 2: o NOME de algum ASIC RDNA 3 aparece? ===")
+    emit("Isto NAO prova implementacao. Em 2020 uma beta do Big Sur ja tinha")
+    emit("'Navi 31' numa tabela do HWServices, e driver nunca existiu.")
+    emit("Serve so para saber se sobrou resquicio de planejamento abandonado.")
+    named = False
+    for b in binaries:
+        hits, err = printable_scan(b, RDNA3_NAME)
+        if hits:
+            named = True
+            emit("--- %s" % b.relative_to(ext))
+            for k, v in sorted(hits.items(), key=lambda x: -x[1]):
+                emit("    %6d  %s" % (v, k))
+    if not named:
+        emit("Nenhum nome de ASIC RDNA 3 na pilha.")
+    elif not impl:
+        emit(">>> Nome presente, implementacao ausente: e o caso historico do")
+        emit(">>> Big Sur se repetindo. NAO altera a conclusao do plano.")
     emit()
 
     emit("=== Controle: ASICs RDNA 2 que a pilha conhece ===")
