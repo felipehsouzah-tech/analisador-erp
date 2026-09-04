@@ -58,6 +58,10 @@ gerados por `tools/isa_codegen_diff.sh`.
 minima. Para levantar a ABI nao e preciso macOS rodando nem VM: bastam os
 arquivos do instalador, Python e 7-Zip 22+.
 
+**Chances:** `docs/12-chances-de-exito.md` — estimativa por fase. Imagem na
+tela ~10%; aceleracao ~2% (faixa 1-5%). Chegar a fase 2 e *descobrir* se a GPU
+responde: ~70-80%. Duas medicoes baratas mudam bastante esses numeros.
+
 ## Reproduzir a analise
 
 ```bash
@@ -101,6 +105,7 @@ docs/08-o-que-e-o-driver.md      definicao do deliverable
 docs/09-fase5-metal-gfx11.md     o back-end gfx11 para Metal (o alvo)
 docs/10-legibilidade-dos-binarios.md  o que da para ler nos binarios, e o que nao
 docs/11-o-que-voce-precisa-de-fato.md receita minima para comecar
+docs/12-chances-de-exito.md      estimativa de exito, por fase
 tools/fetch_sources.sh           baixa as fontes publicas de referencia
 tools/isa_delta.py               diff de feature set de ISA (LLVM AMDGPU.td)
 tools/ip_refs.sh                 contagem de referencias a blocos de IP
