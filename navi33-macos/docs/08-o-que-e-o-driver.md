@@ -96,27 +96,33 @@ A **fase 5 (back-end gfx11) vira projeto separado**, nao pre-requisito.
 > escrever driver nenhum: basta observar o comportamento do WindowServer numa
 > VM Tahoe sem aceleracao (que voce vai montar de qualquer jeito).
 
-## 6. O deliverable, redefinido
+## 6. O deliverable — ESCOPO CORRIGIDO
+
+> **Correcao.** A versao anterior desta secao propunha adotar o "minimo util"
+> (driver so de display) como alvo do projeto. **Isso foi descartado por
+> decisao de escopo: o objetivo e aceleracao.**
+>
+> O driver de display permanece como **marco intermediario obrigatorio** — nao
+> ha aceleracao sem imagem na tela — mas nao e o produto final. A fase 5 e
+> parte do alvo, e esta detalhada em `09-fase5-metal-gfx11.md`.
+
+### Tabela original, agora lida como marcos e nao como alternativas
 
 | Alvo | Fases | Entrega | Metal |
 |---|---|---|---|
-| **Minimo util** | 0–4 | desktop em resolucao nativa na RX 7600 | nao |
-| Completo | 0–5 | aceleracao grafica | sim |
+| Marco intermediario | 0–4 | desktop em resolucao nativa na RX 7600 | nao |
+| **Alvo do projeto** | 0–5 | aceleracao grafica | **sim** |
 
-O alvo do projeto passa a ser o **minimo util**. Nao porque o completo seja
-proibido, mas porque:
-
-- e o primeiro ponto com valor pratico real;
-- e o unico cuja viabilidade se decide cedo (fase 2);
-- a fase 5, embora seja a maior, e tambem a de maior alavancagem com LLM
-  (`06`), entao faz sentido deixa-la por ultimo.
+O marco intermediario continua util como ponto de verificacao: e o primeiro
+resultado observavel, e prova que as fases 2 e 3 funcionaram. Mas o projeto so
+esta entregue com a fase 5.
 
 ## 7. O que continua valendo
 
 Nada aqui contradiz os documentos 01–07. O que muda e o **escopo declarado**:
-o projeto deixa de ser "fazer a RX 7600 funcionar no macOS" e passa a ser
-**"escrever um driver de display para Navi 33 no macOS"** — enunciado mais
-honesto, mais estreito, e verificavel.
+o projeto e **"escrever um driver de GPU para Navi 33 no macOS, com
+aceleracao"** — sendo o driver de display o primeiro marco verificavel do
+caminho, nao o destino.
 
 O gate continua sendo a fase 2: os registradores respondem? Se sim, o resto e
 volume de trabalho de traducao. Se nao, nada acima importa.

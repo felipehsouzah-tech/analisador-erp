@@ -249,6 +249,32 @@ def main():
                 emit("    %6d  %s" % (v, k))
     emit()
 
+    # --- Fase 5: onde vive o compilador AIR -> ISA -----------------------
+    emit("=== FASE 5: driver Metal em userspace (AIR -> ISA) ===")
+    emit("O compilador de shader nao esta nos kexts: ele e userspace. Este")
+    emit("bloco localiza os bundles candidatos, que sao o alvo da fase 5.")
+    mtl_roots = [
+        sysroot / "System/Library/Extensions",
+        sysroot / "System/Library/Frameworks/Metal.framework",
+        sysroot / "System/Library/PrivateFrameworks",
+    ]
+    found_mtl = False
+    for r in mtl_roots:
+        if not r.is_dir():
+            continue
+        for pat in ("**/*MTLDriver*", "**/*MetalDriver*", "**/*mtlcompiler*",
+                    "**/AMD*Metal*", "**/*GPUCompiler*"):
+            for hit in sorted(r.glob(pat))[:12]:
+                found_mtl = True
+                try:
+                    rel = hit.relative_to(sysroot)
+                except ValueError:
+                    rel = hit
+                emit("  %s" % rel)
+    if not found_mtl:
+        emit("  (nada encontrado nos caminhos testados — ajuste os padroes)")
+    emit()
+
     if args.out:
         Path(args.out).write_text("\n".join(out) + "\n", encoding="utf-8")
         print("\n[relatorio gravado em %s]" % args.out)

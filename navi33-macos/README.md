@@ -48,10 +48,11 @@ inventario e o ambiente de build de imediato; e num host Linux com VFIO a VM
 fica *melhor* que bare metal para a fase 0, porque a GPU virtual faz o papel da
 segunda placa ausente.
 
-**O deliverable:** `docs/08-o-que-e-o-driver.md` define o que o projeto
-realmente e — um driver, nao um kext de patch — e estreita o alvo para
-**driver so de display** (fases 0-4), que ja entrega desktop utilizavel. Metal
-(fase 5) vira projeto separado.
+**O deliverable:** `docs/08-o-que-e-o-driver.md` define o que o projeto e — um
+driver, nao um kext de patch. O alvo e **aceleracao**: o driver de display
+(fases 0-4) e marco intermediario, nao destino.
+`docs/09-fase5-metal-gfx11.md` mede o back-end gfx11 para Metal, com dados
+gerados por `tools/isa_codegen_diff.sh`.
 
 ## Reproduzir a analise
 
@@ -92,10 +93,12 @@ docs/04-plano-de-adaptacao.md    arquitetura e plano de implementacao
 docs/05-estado-da-arte.md        trabalho anterior e o que ele corrigiu aqui
 docs/06-o-que-muda-com-llm.md    o que muda no plano com LLM no circuito
 docs/07-ambiente-em-vm.md        o que da para fazer em VM, e o que nao da
-docs/08-o-que-e-o-driver.md      definicao do deliverable e do alvo minimo
+docs/08-o-que-e-o-driver.md      definicao do deliverable
+docs/09-fase5-metal-gfx11.md     o back-end gfx11 para Metal (o alvo)
 tools/fetch_sources.sh           baixa as fontes publicas de referencia
 tools/isa_delta.py               diff de feature set de ISA (LLVM AMDGPU.td)
 tools/ip_refs.sh                 contagem de referencias a blocos de IP
+tools/isa_codegen_diff.sh        diff da ISA emitida: gfx1032 vs gfx1102
 tools/scan_amd_stack.py          inventario da pilha AMD (Linux/macOS, fase 2)
 tools/dump_macos_amd_stack.sh    variante em shell, para macOS bootado
 data/isa_features.json           saida capturada do diff gfx1032 vs gfx1102
