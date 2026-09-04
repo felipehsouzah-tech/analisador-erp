@@ -48,6 +48,11 @@ inventario e o ambiente de build de imediato; e num host Linux com VFIO a VM
 fica *melhor* que bare metal para a fase 0, porque a GPU virtual faz o papel da
 segunda placa ausente.
 
+**O deliverable:** `docs/08-o-que-e-o-driver.md` define o que o projeto
+realmente e — um driver, nao um kext de patch — e estreita o alvo para
+**driver so de display** (fases 0-4), que ja entrega desktop utilizavel. Metal
+(fase 5) vira projeto separado.
+
 ## Reproduzir a analise
 
 ```bash
@@ -87,6 +92,7 @@ docs/04-plano-de-adaptacao.md    arquitetura e plano de implementacao
 docs/05-estado-da-arte.md        trabalho anterior e o que ele corrigiu aqui
 docs/06-o-que-muda-com-llm.md    o que muda no plano com LLM no circuito
 docs/07-ambiente-em-vm.md        o que da para fazer em VM, e o que nao da
+docs/08-o-que-e-o-driver.md      definicao do deliverable e do alvo minimo
 tools/fetch_sources.sh           baixa as fontes publicas de referencia
 tools/isa_delta.py               diff de feature set de ISA (LLVM AMDGPU.td)
 tools/ip_refs.sh                 contagem de referencias a blocos de IP
